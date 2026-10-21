@@ -1,0 +1,17 @@
+{
+  "name": "codex-quota-battery",
+  "version": "2.2.0",
+  "description": "Third-party Windows liquid-glass Codex quota widget with guarded quota-only task recovery.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "额度电池条",
+        "shortDescription": "透明液体电池 · 额度恢复续跑",
+        "category": "Productivity",
+        "defaultPrompt": [
+          "打开额度电池条"
+        ]
+      }
+    }
+  }
+}

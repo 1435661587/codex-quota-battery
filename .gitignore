@@ -1,0 +1,22 @@
+# Public release allowlist. Everything else is private/local.
+/*
+!/.gitignore
+!/AGENTS.md
+!/README.md
+!/LICENSE
+!/CHANGELOG.md
+!/VERSION
+!/QuotaBattery.cs
+!/quota_reader.py
+!/recovery_monitor.py
+!/mcp_server_v3.py
+!/install.py
+!/install_desktop.py
+!/plugin.json
+!/test_recovery.py
+!/test_portable.py
+!/release.py
+!/preview-liquid.png
+!/bilibili-description.md
+!/bilibili-script.md
+!/cover.jpg
