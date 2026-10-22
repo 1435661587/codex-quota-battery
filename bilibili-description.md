@@ -1,3 +1,7 @@
+# 已发布视频
+
+https://www.bilibili.com/video/BV13Lny6YEed/
+
 # 投稿标题
 
 Codex 额度用完就停工？我做了两节电池，恢复后自动接着跑【开源】

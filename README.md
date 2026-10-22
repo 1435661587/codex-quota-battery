@@ -4,6 +4,8 @@
 
 ![液体电池预览](preview-liquid.png)
 
+▶ [三分钟功能演示与安装指引（B 站）](https://www.bilibili.com/video/BV13Lny6YEed/)
+
 MIT 开源 / Windows 10、11 / Python 3.10+ / 已安装并登录 Codex Desktop
 
 ## 一句话安装
