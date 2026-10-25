@@ -85,3 +85,28 @@ class RuntimeRefreshTests(unittest.TestCase):
         with patch.dict(os.environ, {'CODEX_APP_TOOLS_PIPE_PATH':'stale-worker-endpoint','CODEX_THREAD_ID':'old-caller'}):
             got=resolve_runtime({'pipe':'fresh-plugin-endpoint','callerThreadId':'fresh-caller'})
         self.assertEqual(got['pipe'],'fresh-plugin-endpoint');self.assertEqual(got['callerThreadId'],'fresh-caller')
+
+class UpgradeLifecycleTests(unittest.TestCase):
+    def test_new_cache_handoff_reaches_already_running_worker(self):
+        from recovery_monitor import load_runtime, publish_runtime, atomic
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);old=root/'old-cache';new=root/'new-cache';data=root/'data'
+            old.mkdir();new.mkdir()
+            atomic(old/'recovery-runtime.json', {'pipe':'old-endpoint','callerThreadId':'old-caller'})
+            with patch.dict(os.environ, {'CODEX_APP_TOOLS_PIPE_PATH':'new-endpoint','CODEX_THREAD_ID':'new-caller'}):
+                publish_runtime({},data)
+            with patch.dict(os.environ, {'CODEX_APP_TOOLS_PIPE_PATH':'old-endpoint','CODEX_THREAD_ID':'old-caller'}):
+                got=load_runtime(old,data)
+            self.assertEqual(got['pipe'],'new-endpoint');self.assertEqual(got['callerThreadId'],'new-caller')
+    def test_worker_cannot_publish_inferred_endpoint_without_current_identity(self):
+        from recovery_monitor import publish_runtime
+        with tempfile.TemporaryDirectory() as td:
+            with patch.dict(os.environ, {}, clear=True):
+                with patch('pathlib.Path.home',return_value=Path(td)):
+                    publish_runtime({'pipe':'cached','callerThreadId':'cached'},Path(td))
+            self.assertFalse((Path(td)/'bridge-runtime.json').exists())
+    def test_stale_valid_environment_node_does_not_replace_shared_node(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);old=root/'old.exe';new=root/'new.exe';old.touch();new.touch()
+            with patch.dict(os.environ, {'CODEX_MCP_NODE_PATH':str(old)}):got=resolve_runtime({'node':str(new)})
+            self.assertEqual(got['node'],str(new))

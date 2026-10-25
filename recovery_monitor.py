@@ -20,7 +20,7 @@ def resolve_runtime(config, refresh_identity=False):
     result = dict(config)
     local = Path(os.environ.get('LOCALAPPDATA', '.')) / 'OpenAI/Codex'
     node = os.environ.get('CODEX_MCP_NODE_PATH')
-    if node and Path(node).is_file():
+    if refresh_identity and node and Path(node).is_file():
         result['node'] = node
     elif not Path(result.get('node') or '').is_file():
         choices = list((local / 'runtimes/cua_node').glob('*/bin/node.exe'))
@@ -35,8 +35,26 @@ def resolve_runtime(config, refresh_identity=False):
         if refresh_identity and os.environ.get(env): result[key] = os.environ[env]
     return result
 
+def load_runtime(root=ROOT, data=DATA):
+    """All plugin cache versions rendezvous through one per-user bridge file."""
+    config = read_json(root / 'recovery-runtime.json', {})
+    shared = read_json(data / 'bridge-runtime.json', {})
+    if shared.get('pipe') and shared.get('callerThreadId'):
+        config.update({k: shared[k] for k in ('pipe', 'callerThreadId', 'node', 'server') if shared.get(k)})
+    return resolve_runtime(config)
+
+
+def publish_runtime(config, data=DATA):
+    # Called only by a current official plugin invocation, never by a worker
+    # inheriting the old desktop environment. No endpoint enumeration.
+    refreshed = resolve_runtime(config, refresh_identity=True)
+    if os.environ.get('CODEX_APP_TOOLS_PIPE_PATH') and os.environ.get('CODEX_THREAD_ID'):
+        data.mkdir(parents=True, exist_ok=True)
+        atomic(data / 'bridge-runtime.json', {k: refreshed[k] for k in ('pipe', 'callerThreadId', 'node', 'server') if refreshed.get(k)})
+    return refreshed
+
 def atomic(path, value):
-    temp = path.with_suffix('.tmp')
+    temp = path.with_name(path.name + '.' + str(os.getpid()) + '.tmp')
     temp.write_text(json.dumps(value, ensure_ascii=False, indent=2), 'utf-8')
     os.replace(temp, path)
 
@@ -185,7 +203,7 @@ def alive(pid):
 
 def run(parent, once=False):
     DATA.mkdir(parents=True,exist_ok=True)
-    config=resolve_runtime(read_json(ROOT/'recovery-runtime.json',{}))
+    config=load_runtime()
     engine=Engine(read_json(DATA/'recovery-state.json'))
     app=AppTools(config);reader=QuotaReader()
     def save(status, **extra):
@@ -205,7 +223,7 @@ def run(parent, once=False):
                 if once:break
                 time.sleep(3);continue
             try:
-                config=resolve_runtime(read_json(ROOT/'recovery-runtime.json',config))
+                config=load_runtime()
                 if any(config.get(k)!=app.config.get(k) for k in ('pipe','node','server','callerThreadId')):app.close()
                 app.config=config
                 if app.p is None or app.p.poll() is not None:app.open()

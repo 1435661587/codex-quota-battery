@@ -1,3 +1,10 @@
+# 2.2.2
+
+- Handoff invocation-provided desktop bridge updates across plugin cache versions through a shared per-user file.
+- Prevent inherited stale environment paths from overriding refreshed runtime configuration.
+- Restart an exited recovery worker from the widget every five seconds; preserve pending state and deduplication across reconnects.
+- Keep manual stops excluded and never discover other desktop endpoints.
+
 # 2.2.1
 
 - Fix auto-resume connection loss after Codex updates remove the cached Node runtime. Refresh official runtime files and invocation-provided bridge identity; reconnect when these change.

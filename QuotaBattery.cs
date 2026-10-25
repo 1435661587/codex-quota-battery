@@ -143,7 +143,7 @@ sealed class QuotaRpc : IDisposable {
                 }catch(ArgumentException){}catch(InvalidOperationException){}
             }}catch(IOException){}catch(ObjectDisposedException){}
         });thread.IsBackground=true;thread.Start();
-        Request("initialize",new {clientInfo=new {name="codex_quota_battery",title="Quota Battery",version="2.2.1"}},3);
+        Request("initialize",new {clientInfo=new {name="codex_quota_battery",title="Quota Battery",version="2.2.2"}},3);
         input.WriteLine("{\"method\":\"initialized\",\"params\":{}}");
         TransportName=name;
     }
@@ -219,16 +219,21 @@ sealed class BatteryForm : Form {
         MouseDown+=(s,e)=>{if(e.Button==MouseButtons.Left)BeginDrag(Cursor.Position);};
         MouseMove+=(s,e)=>ContinueDrag(Cursor.Position);
         MouseUp+=(s,e)=>{if(e.Button==MouseButtons.Left)EndDrag();};
-        Shown+=(s,e)=>{animation.Start();WriteWidgetState();StartRecovery();var worker=new Thread(Poll);worker.IsBackground=true;worker.Start();};
+        recoveryWatchdog.Interval=5000;recoveryWatchdog.Tick+=(s,e)=>StartRecovery();
+        Shown+=(s,e)=>{recoveryWatchdog.Start();animation.Start();WriteWidgetState();StartRecovery();var worker=new Thread(Poll);worker.IsBackground=true;worker.Start();};
     }
     bool RecoveryEnabled() {
         try {var path=Path.Combine(Program.Data,"recovery-settings.json");if(File.Exists(path))return Convert.ToBoolean(Quota.Get(Quota.Obj(new JavaScriptSerializer().DeserializeObject(File.ReadAllText(path))),"enabled"));}catch{}
         return true;
     }
+    Process recoveryProcess;
+    System.Windows.Forms.Timer recoveryWatchdog=new System.Windows.Forms.Timer();
     void StartRecovery() {
+        if(closing)return;
+        try {if(recoveryProcess!=null && !recoveryProcess.HasExited)return;}catch{}
         try {
             var cfg=Quota.Obj(new JavaScriptSerializer().DeserializeObject(File.ReadAllText(Path.Combine(Program.Root,"recovery-runtime.json"))));
-            Process.Start(new ProcessStartInfo(Convert.ToString(cfg["python"]),"\""+Path.Combine(Program.Root,"recovery_monitor.py")+"\" --parent "+Process.GetCurrentProcess().Id){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Program.Root});
+            recoveryProcess=Process.Start(new ProcessStartInfo(Convert.ToString(cfg["python"]),"\""+Path.Combine(Program.Root,"recovery_monitor.py")+"\" --parent "+Process.GetCurrentProcess().Id){UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Program.Root});
         }catch {File.WriteAllText(Path.Combine(Program.Data,"recovery-status.json"),"{\"status\":\"startup_error\"}");}
     }
     internal void BeginDrag(Point pointer) {dragging=true;moved=false;dragStart=pointer;windowStart=Location;Capture=true;}

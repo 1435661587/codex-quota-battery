@@ -1,8 +1,9 @@
 """Portable Windows source installer; use inside Codex Desktop."""
 from pathlib import Path
 import argparse,json,os,shutil,subprocess,sys,uuid
+from recovery_monitor import publish_runtime
 ROOT=Path(__file__).resolve().parent
-VERSION='2.2.1'
+VERSION='2.2.2'
 def load(path,default=None):
     try:return json.loads(path.read_text('utf-8-sig'))
     except (OSError,ValueError):return default
@@ -25,6 +26,7 @@ def install(home=None,launch=True,enable_recovery=False):
     runtime={'python':str(Path(sys.base_prefix)/'python.exe'),'node':node,'server':str(max(servers,key=lambda p:p.stat().st_mtime)) if servers else old.get('server'),'pipe':os.environ.get('CODEX_APP_TOOLS_PIPE_PATH') or old.get('pipe'),'callerThreadId':os.environ.get('CODEX_THREAD_ID') or old.get('callerThreadId')}
     (dest/'recovery-runtime.json').write_text(json.dumps(runtime,ensure_ascii=False,indent=2),'utf-8')
     data=Path(os.environ['LOCALAPPDATA'])/'CodexQuotaBattery';data.mkdir(exist_ok=True)
+    publish_runtime(runtime,data)
     settings=data/'recovery-settings.json'
     if enable_recovery or not settings.exists():settings.write_text(json.dumps({'enabled':bool(enable_recovery),'generation':str(uuid.uuid4())}),'utf-8')
     manifest=load(ROOT/'plugin.json');(dest/'plugin.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),'utf-8')
