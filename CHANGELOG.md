@@ -1,3 +1,8 @@
+# 2.2.1
+
+- Fix auto-resume connection loss after Codex updates remove the cached Node runtime. Refresh official runtime files and invocation-provided bridge identity; reconnect when these change.
+- Preserve opt-in, explicit quota-failure evidence, manual-stop exclusion, final recheck and persistent deduplication.
+
 # Changelog
 
 ## 2.2.0

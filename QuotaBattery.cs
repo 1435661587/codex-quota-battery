@@ -143,7 +143,7 @@ sealed class QuotaRpc : IDisposable {
                 }catch(ArgumentException){}catch(InvalidOperationException){}
             }}catch(IOException){}catch(ObjectDisposedException){}
         });thread.IsBackground=true;thread.Start();
-        Request("initialize",new {clientInfo=new {name="codex_quota_battery",title="Quota Battery",version="2.2.0"}},3);
+        Request("initialize",new {clientInfo=new {name="codex_quota_battery",title="Quota Battery",version="2.2.1"}},3);
         input.WriteLine("{\"method\":\"initialized\",\"params\":{}}");
         TransportName=name;
     }

@@ -14,6 +14,27 @@ PROMPT = ('额度电池条检测到本轮工作因 Codex 额度耗尽而中断�
           '如果用户后来主动停止、取消、要求等待，或已有更新的用户指令，以用户最新指令为准，不恢复旧任务。'
           '不要替用户批准任何授权请求。')
 
+def resolve_runtime(config, refresh_identity=False):
+    """Refresh vendor runtime files after desktop upgrades; never discover pipes."""
+    import shutil
+    result = dict(config)
+    local = Path(os.environ.get('LOCALAPPDATA', '.')) / 'OpenAI/Codex'
+    node = os.environ.get('CODEX_MCP_NODE_PATH')
+    if node and Path(node).is_file():
+        result['node'] = node
+    elif not Path(result.get('node') or '').is_file():
+        choices = list((local / 'runtimes/cua_node').glob('*/bin/node.exe'))
+        candidate = max(choices, key=lambda p: p.stat().st_mtime) if choices else None
+        result['node'] = str(candidate) if candidate else shutil.which('node')
+    home = Path(os.environ['CODEX_HOME']) if os.environ.get('CODEX_HOME') else Path.home() / '.codex'
+    servers = list((home / 'plugins/cache/openai-bundled/codex-app-tools').glob('*/server.mjs'))
+    if servers:
+        result['server'] = str(max(servers, key=lambda p: p.stat().st_mtime))
+    # Only a current invocation may supply an endpoint and caller identity.
+    for key, env in [('pipe', 'CODEX_APP_TOOLS_PIPE_PATH'), ('callerThreadId', 'CODEX_THREAD_ID')]:
+        if refresh_identity and os.environ.get(env): result[key] = os.environ[env]
+    return result
+
 def atomic(path, value):
     temp = path.with_suffix('.tmp')
     temp.write_text(json.dumps(value, ensure_ascii=False, indent=2), 'utf-8')
@@ -93,8 +114,9 @@ class Engine:
 class AppTools:
     """Standard stdio client for the installed first-party app-tools MCP server."""
     def __init__(self, config):
-        self.config=config;self.seq=0;self.messages=queue.Queue();self.p=None
+        self.config=resolve_runtime(config);self.seq=0;self.messages=queue.Queue();self.p=None
     def open(self):
+        self.config=resolve_runtime(self.config)
         env=os.environ.copy()
         if self.config.get('pipe'):env['CODEX_APP_TOOLS_PIPE_PATH']=self.config['pipe']
         if not env.get('CODEX_APP_TOOLS_PIPE_PATH'): raise RuntimeError('desktop_bridge_unavailable')
@@ -163,7 +185,7 @@ def alive(pid):
 
 def run(parent, once=False):
     DATA.mkdir(parents=True,exist_ok=True)
-    config=read_json(ROOT/'recovery-runtime.json',{})
+    config=resolve_runtime(read_json(ROOT/'recovery-runtime.json',{}))
     engine=Engine(read_json(DATA/'recovery-state.json'))
     app=AppTools(config);reader=QuotaReader()
     def save(status, **extra):
@@ -183,8 +205,8 @@ def run(parent, once=False):
                 if once:break
                 time.sleep(3);continue
             try:
-                config=read_json(ROOT/'recovery-runtime.json',config)
-                if config.get('pipe')!=app.config.get('pipe'):app.close()
+                config=resolve_runtime(read_json(ROOT/'recovery-runtime.json',config))
+                if any(config.get(k)!=app.config.get(k) for k in ('pipe','node','server','callerThreadId')):app.close()
                 app.config=config
                 if app.p is None or app.p.poll() is not None:app.open()
                 threads=app.threads();stamp=time.time()

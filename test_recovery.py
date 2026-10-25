@@ -1,4 +1,7 @@
-import copy, datetime, unittest
+import copy, datetime, unittest, tempfile, os
+from pathlib import Path
+from unittest.mock import patch
+from recovery_monitor import resolve_runtime
 from recovery_monitor import Engine, quota_ready, AppTools,quota_failure
 
 STAMP=1800000000
@@ -64,3 +67,21 @@ class RecoveryTests(unittest.TestCase):
         self.assertFalse(quota_failure({'status':'failed','error':{'codexErrorInfo':'rateLimitExceeded','message':"You've hit your usage limit."}}))
 
 if __name__=='__main__':unittest.main(verbosity=2)
+
+class RuntimeRefreshTests(unittest.TestCase):
+    def test_upgrade_replaces_deleted_node_and_server_without_guessing_endpoint(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td); node=root/'OpenAI/Codex/runtimes/cua_node/new/bin/node.exe';node.parent.mkdir(parents=True);node.touch()
+            server=root/'home/plugins/cache/openai-bundled/codex-app-tools/new/server.mjs';server.parent.mkdir(parents=True);server.touch()
+            with patch.dict(os.environ, {'LOCALAPPDATA':td,'CODEX_HOME':str(root/'home')}, clear=True):
+                got=resolve_runtime({'node':str(root/'removed.exe'),'server':'removed','pipe':'original','callerThreadId':'caller'})
+            self.assertEqual(got['node'],str(node));self.assertEqual(got['server'],str(server));self.assertEqual(got['pipe'],'original');self.assertEqual(got['callerThreadId'],'caller')
+    def test_current_invocation_refreshes_endpoint_and_identity(self):
+        with patch.dict(os.environ, {'CODEX_APP_TOOLS_PIPE_PATH':'current-endpoint','CODEX_THREAD_ID':'current-caller'}):
+            got=resolve_runtime({'pipe':'stale','callerThreadId':'old'}, refresh_identity=True)
+        self.assertEqual(got['pipe'],'current-endpoint');self.assertEqual(got['callerThreadId'],'current-caller')
+
+    def test_old_worker_environment_cannot_overwrite_refreshed_connection(self):
+        with patch.dict(os.environ, {'CODEX_APP_TOOLS_PIPE_PATH':'stale-worker-endpoint','CODEX_THREAD_ID':'old-caller'}):
+            got=resolve_runtime({'pipe':'fresh-plugin-endpoint','callerThreadId':'fresh-caller'})
+        self.assertEqual(got['pipe'],'fresh-plugin-endpoint');self.assertEqual(got['callerThreadId'],'fresh-caller')

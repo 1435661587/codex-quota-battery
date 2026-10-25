@@ -1,6 +1,6 @@
 {
   "name": "codex-quota-battery",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Third-party Windows liquid-glass Codex quota widget with guarded quota-only task recovery.",
   "extensions": {
     "com.openai": {

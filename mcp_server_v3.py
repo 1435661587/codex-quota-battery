@@ -2,6 +2,7 @@
 import ctypes,datetime,json,os,subprocess,sys,time
 from pathlib import Path
 from quota_reader import QuotaReader
+from recovery_monitor import resolve_runtime
 ROOT=Path(__file__).resolve().parent
 DATA=Path(os.environ['LOCALAPPDATA'])/'CodexQuotaBattery'
 READER=QuotaReader()
@@ -17,10 +18,9 @@ def open_widget():
     config_path=ROOT/'recovery-runtime.json'
     try:
         config=json.loads(config_path.read_text('utf-8'))
-        pipe=os.environ.get('CODEX_APP_TOOLS_PIPE_PATH')
-        if pipe and config.get('pipe')!=pipe:
-            config['pipe']=pipe
-            temp=config_path.with_suffix('.tmp');temp.write_text(json.dumps(config,ensure_ascii=False),'utf-8');os.replace(temp,config_path)
+        refreshed=resolve_runtime(config, refresh_identity=True)
+        if refreshed!=config:
+            temp=config_path.with_suffix('.tmp');temp.write_text(json.dumps(refreshed,ensure_ascii=False),'utf-8');os.replace(temp,config_path)
     except (OSError,ValueError):pass
     if not running():
         subprocess.Popen([str(ROOT/'QuotaBattery.exe')],cwd=ROOT,creationflags=subprocess.CREATE_NO_WINDOW)
@@ -43,7 +43,7 @@ def respond(method,params):
     if method=='initialize':
         try:open_widget()
         except (OSError,RuntimeError):pass
-        return {'protocolVersion':params.get('protocolVersion','2025-06-18'),'capabilities':{'tools':{}},'serverInfo':{'name':'codex-quota-battery','version':'2.2.0'}}
+        return {'protocolVersion':params.get('protocolVersion','2025-06-18'),'capabilities':{'tools':{}},'serverInfo':{'name':'codex-quota-battery','version':'2.2.1'}}
     if method=='ping':return {}
     if method=='tools/list':return {'tools':[
         {'name':'open_quota_battery','description':'直接显示可拖动的桌面额度电池条，记住位置；官方通知收到即更新，并每2秒核对额度。不打开网页，不需要点击悬浮按钮。','inputSchema':{'type':'object','properties':{},'additionalProperties':False},'annotations':{'readOnlyHint':False,'destructiveHint':False,'openWorldHint':False}},

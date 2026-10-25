@@ -86,3 +86,6 @@ python release.py sync --message "feat: describe the completed change"
 接口参考：[OpenAI App Server](https://learn.chatgpt.com/docs/app-server)、[本地插件打包](https://developers.openai.com/plugins/build/plugins)。
 
 MIT 许可，见 LICENSE。Codex/OpenAI 商标归各自权利人所有。
+
+### 2.2.1 自动续跑修复
+Codex 更新后会重新定位官方运行文件，插件调用时刷新当前桌面连接，避免旧 Node 路径被清理后仅额度正常而续跑失联。更新请重新运行 `python install.py`，已有续跑开关与去重记录保留；重新打开组件后检查监控状态。不会补跑未被观察到的历史失败或主动停止的任务。

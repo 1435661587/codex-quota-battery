@@ -2,7 +2,7 @@
 from pathlib import Path
 import argparse,json,os,shutil,subprocess,sys,uuid
 ROOT=Path(__file__).resolve().parent
-VERSION='2.2.0'
+VERSION='2.2.1'
 def load(path,default=None):
     try:return json.loads(path.read_text('utf-8-sig'))
     except (OSError,ValueError):return default
